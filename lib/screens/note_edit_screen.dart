@@ -8,11 +8,16 @@
 // Uses Flutter's `Form` + `TextFormField` with validators for inline
 // validation feedback. The Save button is disabled while the async save
 // is in flight to prevent double-submits.
+//
+// All visuals come from the theme — no hardcoded colors, text styles,
+// or radii.
 
 import 'package:flutter/material.dart';
 
 import '../models/note.dart';
 import '../services/firestore_service.dart';
+import '../theme/app_spacing.dart';
+import '../widgets/responsive.dart';
 
 class NoteEditScreen extends StatefulWidget {
   /// The note to edit. Pass `null` to create a new note.
@@ -25,18 +30,14 @@ class NoteEditScreen extends StatefulWidget {
 }
 
 class _NoteEditScreenState extends State<NoteEditScreen> {
-  // ── Form key — lets us call _formKey.currentState!.validate() ──────
   final _formKey = GlobalKey<FormState>();
 
-  // ── TextEditingControllers ─────────────────────────────────────────
-  // Pre-fill with the existing note's values in EDIT mode, empty in CREATE.
   late final TextEditingController _titleController;
   late final TextEditingController _descriptionController;
 
-  // ── Saving flag — disables the Save button while Firestore write runs.
+  /// Disables Save while a Firestore write is in flight.
   bool _isSaving = false;
 
-  // Convenience getters to make the code below read more naturally.
   bool get _isEditMode => widget.note != null;
 
   @override
@@ -49,24 +50,12 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
 
   @override
   void dispose() {
-    // Always dispose controllers to avoid memory leaks.
     _titleController.dispose();
     _descriptionController.dispose();
     super.dispose();
   }
 
-  /// Tap handler for the Save button.
-  ///
-  /// 1. Validates the form. If invalid, validation messages appear and we
-  ///    stop here.
-  /// 2. Disables the button (setState) to prevent double-submits.
-  /// 3. Calls the appropriate Firestore method (add or update).
-  /// 4. Shows a SnackBar with success/error feedback.
-  /// 5. Pops back to the previous screen (NotesListScreen), which updates
-  ///    automatically because of StreamBuilder.
   Future<void> _onSavePressed() async {
-    // 1) Validate. If any field is invalid, Form.validate() returns false
-    //    and shows the error messages we defined in the validators.
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -78,15 +67,12 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
       final description = _descriptionController.text.trim();
 
       if (_isEditMode) {
-        // EDIT: update the existing note. We keep the original `id` and
-        // `createdAt`; FirestoreService.updateNote() bumps `updatedAt`.
         final updatedNote = widget.note!.copyWith(
           title: title,
           description: description,
         );
         await FirestoreService.updateNote(updatedNote);
       } else {
-        // CREATE: write a brand-new document. Firestore assigns the ID.
         await FirestoreService.addNote(
           title: title,
           description: description,
@@ -94,15 +80,12 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
       }
 
       if (!mounted) return;
-
-      // Pop back to the list screen. StreamBuilder picks up the change.
       Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to save: $e')),
       );
-      // Re-enable the button so the user can retry.
       setState(() => _isSaving = false);
     }
   }
@@ -110,100 +93,106 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Keyboard inset handling: the bottom button stays above the keyboard.
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        // Title reflects the current mode — small UX touch.
         title: Text(_isEditMode ? 'Edit Note' : 'Add Note'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
-          // Save action lives in the AppBar so it's always visible.
-          TextButton(
-            onPressed: _isSaving ? null : _onSavePressed,
-            child: Text(
-              _isSaving ? 'Saving…' : 'Save',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+            child: TextButton(
+              onPressed: _isSaving ? null : _onSavePressed,
+              child: Text(
+                _isSaving ? 'Saving…' : 'Save',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
+      body: SafeArea(
         child: Form(
           key: _formKey,
           autovalidateMode: AutovalidateMode.onUserInteraction,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // ── Title field ────────────────────────────────────────
-              TextFormField(
-                controller: _titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Title',
-                  hintText: 'Enter a title',
-                  border: OutlineInputBorder(),
-                ),
-                textInputAction: TextInputAction.next,
-                maxLength: 100,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Title is required';
-                  }
-                  if (value.trim().length > 100) {
-                    return 'Title must be 100 characters or fewer';
-                  }
-                  return null;
-                },
-              ),
+          child: AppSpacing.constrained(
+            Padding(
+              padding: horizontalScreenPadding(context),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: AppSpacing.md),
 
-              const SizedBox(height: 16),
-
-              // ── Description field ─────────────────────────────────
-              // Expanded so it fills the remaining screen height.
-              Expanded(
-                child: TextFormField(
-                  controller: _descriptionController,
-                  decoration: const InputDecoration(
-                    labelText: 'Description',
-                    hintText: 'Write your note here…',
-                    border: OutlineInputBorder(),
-                    alignLabelWithHint: true,
+                  // ── Title field ─────────────────────────────────────
+                  TextFormField(
+                    controller: _titleController,
+                    decoration: const InputDecoration(
+                      labelText: 'Title',
+                      hintText: 'Enter a title',
+                      prefixIcon: Icon(Icons.title),
+                    ),
+                    textInputAction: TextInputAction.next,
+                    maxLength: 100,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Title is required';
+                      }
+                      if (value.trim().length > 100) {
+                        return 'Title must be 100 characters or fewer';
+                      }
+                      return null;
+                    },
                   ),
-                  expands: true,
-                  minLines: null,
-                  maxLines: null,
-                  keyboardType: TextInputType.multiline,
-                  textAlignVertical: TextAlignVertical.top,
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Description is required';
-                    }
-                    return null;
-                  },
-                ),
-              ),
 
-              const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.lg),
 
-              // ── Save button (also visible at the bottom) ───────────
-              // AppBar already has a Save action; this gives the user
-              // a more obvious primary CTA at the bottom of the form.
-              FilledButton.icon(
-                onPressed: _isSaving ? null : _onSavePressed,
-                icon: _isSaving
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.save),
-                label: Text(_isSaving ? 'Saving…' : 'Save'),
+                  // ── Description field ───────────────────────────────
+                  Expanded(
+                    child: TextFormField(
+                      controller: _descriptionController,
+                      decoration: const InputDecoration(
+                        labelText: 'Description',
+                        hintText: 'Write your note here…',
+                        alignLabelWithHint: true,
+                      ),
+                      expands: true,
+                      minLines: null,
+                      maxLines: null,
+                      keyboardType: TextInputType.multiline,
+                      textAlignVertical: TextAlignVertical.top,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Description is required';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+
+                  const SizedBox(height: AppSpacing.lg),
+
+                  // ── Save button ─────────────────────────────────────
+                  FilledButton.icon(
+                    onPressed: _isSaving ? null : _onSavePressed,
+                    icon: _isSaving
+                        ? SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Theme.of(context).colorScheme.onPrimary,
+                            ),
+                          )
+                        : const Icon(Icons.check),
+                    label: Text(_isSaving ? 'Saving…' : 'Save note'),
+                  ),
+
+                  const SizedBox(height: AppSpacing.md),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
