@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'firebase_options.dart';
 import 'screens/notes_list_screen.dart';
+import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,9 +20,11 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Amar Notes',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
+      // Both themes are built from scratch (see lib/theme/).
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      // Follow the device's system theme by default.
+      themeMode: ThemeMode.system,
       home: const NotesListScreen(),
     );
   }
