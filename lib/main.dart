@@ -13,8 +13,29 @@ Future<void> main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  /// Starts in `system` so the user's device preference is respected on
+  /// first launch. The toggle button in the list screen can switch to
+  /// `light` or `dark` explicitly.
+  ThemeMode _themeMode = ThemeMode.system;
+
+  void _cycleThemeMode() {
+    setState(() {
+      // Cycle: system → light → dark → system → ...
+      _themeMode = switch (_themeMode) {
+        ThemeMode.system => ThemeMode.light,
+        ThemeMode.light => ThemeMode.dark,
+        ThemeMode.dark => ThemeMode.system,
+      };
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,9 +44,13 @@ class MyApp extends StatelessWidget {
       // Both themes are built from scratch (see lib/theme/).
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      // Follow the device's system theme by default.
-      themeMode: ThemeMode.system,
-      home: const NotesListScreen(),
+      themeMode: _themeMode,
+      // Hide the red "DEBUG" banner in the top-right corner.
+      debugShowCheckedModeBanner: false,
+      home: NotesListScreen(
+        themeMode: _themeMode,
+        onToggleTheme: _cycleThemeMode,
+      ),
     );
   }
 }
