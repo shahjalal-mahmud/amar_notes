@@ -26,13 +26,13 @@ state-management libraries.
 
 ## Tech Stack
 
-| Layer        | Choice                          |
-| ------------ | ------------------------------- |
-| Framework    | Flutter (Material 3)            |
-| Backend      | Firebase Cloud Firestore        |
-| Auth         | _Not used — see Security below_ |
-| State        | `setState` + `StreamBuilder`    |
-| Theming      | Hand-built `ColorScheme` + M3   |
+| Layer     | Choice                          |
+|-----------|---------------------------------|
+| Framework | Flutter (Material 3)            |
+| Backend   | Firebase Cloud Firestore        |
+| Auth      | _Not used — see Security below_ |
+| State     | `setState` + `StreamBuilder`    |
+| Theming   | Hand-built `ColorScheme` + M3   |
 
 ---
 
@@ -99,31 +99,6 @@ Each note is a document in the top-level `notes` collection:
 The document ID is the Firestore-generated UID; it is **not** stored as a
 field. Timestamps use `FieldValue.serverTimestamp()` to avoid client-clock
 skew when sorting by `updatedAt`.
-
----
-
-## Security Rules
-
-> ⚠️ This is a **student/demo project** that ships with Firestore's
-> permissive test-mode rules for ease of grading. In a real production app
-> you must require authentication and scope reads/writes to the document
-> owner. Example rules for an authenticated, per-user setup:
-
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /notes/{noteId} {
-      allow read, write: if request.auth != null
-                        && request.auth.uid == resource.data.userId;
-    }
-  }
-}
-```
-
-To configure rules for your own Firebase project, open the
-[Firebase Console](https://console.firebase.google.com/) → Firestore →
-**Rules** tab.
 
 ---
 
