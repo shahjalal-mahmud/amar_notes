@@ -1,18 +1,18 @@
-// NoteCard — a Material `Card` widget that displays a single Note.
+// NoteCard — Material 3 card representing a single note in the list.
 //
 // Layout:
-//   ┌──────────────────────────────────────────────┐
-//   │ Title                                        │
-//   │ Description preview (max 2 lines)            │
-//   │                              [Edit] [Delete] │
-//   └──────────────────────────────────────────────┘
+//   ┌──────────────────────────────────────────────────┐
+//   │ Title (semibold)                       ✏   🗑    │
+//   │ Description preview (max 2 lines)               │
+//   └──────────────────────────────────────────────────┘
 //
-// Both buttons call a callback supplied by the parent screen so this
-// widget stays "dumb" — it only renders and forwards events.
+// The edit/delete actions are icon-only IconButtons (48×48 hit targets).
+// All colors/typography/radii come from the theme — no literals here.
 
 import 'package:flutter/material.dart';
 
 import '../models/note.dart';
+import '../theme/app_spacing.dart';
 
 class NoteCard extends StatelessWidget {
   final Note note;
@@ -28,61 +28,72 @@ class NoteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return Card(
-      // Slight elevation to match Material 3 defaults.
-      elevation: 2,
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Title ───────────────────────────────────────────────
-            Text(
-              note.title.isEmpty ? '(Untitled)' : note.title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+      child: InkWell(
+        onTap: onEdit,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.md,
+            AppSpacing.xs,
+            AppSpacing.md,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Title + actions row ───────────────────────────────
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Text(
+                      note.title.isEmpty ? '(Untitled)' : note.title,
+                      style: textTheme.titleMedium,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-
-            const SizedBox(height: 6),
-
-            // ── Description preview ─────────────────────────────────
-            // maxLines: 2 keeps the list compact while still showing
-            // enough of the note to be recognisable.
-            Text(
-              note.description.isEmpty ? '(No description)' : note.description,
-              style: Theme.of(context).textTheme.bodyMedium,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-
-            const SizedBox(height: 8),
-
-            // ── Action row ──────────────────────────────────────────
-            // Row at the bottom-right with Edit and Delete buttons.
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton.icon(
-                  onPressed: onEdit,
-                  icon: const Icon(Icons.edit, size: 18),
-                  label: const Text('Edit'),
-                ),
-                const SizedBox(width: 4),
-                TextButton.icon(
-                  onPressed: onDelete,
-                  icon: const Icon(Icons.delete, size: 18),
-                  label: const Text('Delete'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Theme.of(context).colorScheme.error,
+                  IconButton(
+                    onPressed: onEdit,
+                    icon: const Icon(Icons.edit_outlined),
+                    tooltip: 'Edit',
+                    visualDensity: VisualDensity.compact,
                   ),
+                  const SizedBox(width: AppSpacing.xs),
+                  IconButton(
+                    onPressed: onDelete,
+                    icon: const Icon(Icons.delete_outline),
+                    tooltip: 'Delete',
+                    visualDensity: VisualDensity.compact,
+                    style: IconButton.styleFrom(
+                      foregroundColor: colorScheme.error,
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: AppSpacing.xs),
+
+              // ── Description preview ───────────────────────────────
+              Padding(
+                padding: const EdgeInsets.only(
+                  right: AppSpacing.sm,
+                  bottom: AppSpacing.xs,
                 ),
-              ],
-            ),
-          ],
+                child: Text(
+                  note.description.isEmpty
+                      ? '(No description)'
+                      : note.description,
+                  style: textTheme.bodyMedium,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
