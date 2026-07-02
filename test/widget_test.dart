@@ -1,30 +1,33 @@
-// This is a basic Flutter widget test.
+// Smoke test for the Amar Notes app.
 //
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// The default `MyApp` requires Firebase initialization at runtime, which
+// can't happen in a unit test environment. Instead we pump a minimal
+// `MaterialApp` using our custom themes and verify the theme structure
+// is well-formed. This guards against regressions in the theme files
+// without needing a Firebase mock.
 
+import 'package:amar_notes/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:amar_notes/main.dart';
-
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('Light theme builds without error', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme,
+        home: const Scaffold(body: Text('hello')),
+      ),
+    );
+    expect(find.text('hello'), findsOneWidget);
+  });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  testWidgets('Dark theme builds without error', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.darkTheme,
+        home: const Scaffold(body: Text('dark')),
+      ),
+    );
+    expect(find.text('dark'), findsOneWidget);
   });
 }
