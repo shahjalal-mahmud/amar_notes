@@ -98,17 +98,15 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
       appBar: AppBar(
         title: Text(_isEditMode ? 'Edit Note' : 'Add Note'),
         actions: [
+          // Padding keeps the button inside the AppBar's safe area.
+          // The button's foreground colour, label typography, and shape
+          // come from the `textButtonTheme` defined in light_theme.dart /
+          // dark_theme.dart — no inline overrides needed.
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
             child: TextButton(
               onPressed: _isSaving ? null : _onSavePressed,
-              child: Text(
-                _isSaving ? 'Saving…' : 'Save',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.primary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              child: Text(_isSaving ? 'Saving…' : 'Save'),
             ),
           ),
         ],
