@@ -22,7 +22,18 @@ import '../widgets/responsive.dart';
 import 'note_edit_screen.dart';
 
 class NotesListScreen extends StatefulWidget {
-  const NotesListScreen({super.key});
+  /// Current theme mode (passed down from `MyApp`).
+  final ThemeMode themeMode;
+
+  /// Called when the user taps the theme-toggle icon in the AppBar.
+  /// The parent (`MyApp`) decides what the next mode should be.
+  final VoidCallback onToggleTheme;
+
+  const NotesListScreen({
+    super.key,
+    required this.themeMode,
+    required this.onToggleTheme,
+  });
 
   @override
   State<NotesListScreen> createState() => _NotesListScreenState();
@@ -62,11 +73,42 @@ class _NotesListScreenState extends State<NotesListScreen> {
     }
   }
 
+  /// Returns the appropriate icon and tooltip for the current theme mode.
+  ///
+  ///   - system → "brightness_auto"  (follows device)
+  ///   - light  → "light_mode"       (sun)
+  ///   - dark   → "dark_mode"        (moon)
+  ({IconData icon, String tooltip}) _themeToggleContent() {
+    return switch (widget.themeMode) {
+      ThemeMode.system => (
+          icon: Icons.brightness_auto,
+          tooltip: 'Theme: system — tap for light',
+        ),
+      ThemeMode.light => (
+          icon: Icons.light_mode,
+          tooltip: 'Theme: light — tap for dark',
+        ),
+      ThemeMode.dark => (
+          icon: Icons.dark_mode,
+          tooltip: 'Theme: dark — tap for system',
+        ),
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
+    final themeToggle = _themeToggleContent();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Amar Notes'),
+        actions: [
+          IconButton(
+            onPressed: widget.onToggleTheme,
+            icon: Icon(themeToggle.icon),
+            tooltip: themeToggle.tooltip,
+          ),
+        ],
       ),
 
       // Extended FAB shows icon + label for better discoverability.
