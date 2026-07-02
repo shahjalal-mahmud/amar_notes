@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import '../models/note.dart';
 import '../services/firestore_service.dart';
 import '../widgets/note_card.dart';
+import 'note_edit_screen.dart';
 
 class NotesListScreen extends StatefulWidget {
   const NotesListScreen({super.key});
@@ -27,20 +28,25 @@ class NotesListScreen extends StatefulWidget {
 class _NotesListScreenState extends State<NotesListScreen> {
   /// Tap handler for the "+" FAB.
   ///
-  /// For now we just show a SnackBar — in the next step this will navigate
-  /// to the dedicated NoteEditScreen in "create" mode.
+  /// Navigates to NoteEditScreen in CREATE mode (no `note` argument).
+  /// StreamBuilder on the previous screen picks up the new note on pop.
   void _onAddNotePressed() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Add note — coming next step')),
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const NoteEditScreen(),
+      ),
     );
   }
 
   /// Tap handler for the "Edit" button on a NoteCard.
   ///
-  /// Will later navigate to NoteEditScreen with the note passed in.
+  /// Navigates to NoteEditScreen in EDIT mode, passing the existing note
+  /// so the form is pre-filled with its title and description.
   void _onEditNote(Note note) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Edit "${note.title}" — coming next step')),
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => NoteEditScreen(note: note),
+      ),
     );
   }
 
