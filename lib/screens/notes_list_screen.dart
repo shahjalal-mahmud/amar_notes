@@ -3,19 +3,22 @@
 // Responsibilities:
 //   1. Subscribe to FirestoreService.streamNotes() via a StreamBuilder so
 //      the list updates in real time whenever a note is added, edited,
-//      or deleted (anywhere — even from another device).
+//      or deleted.
 //   2. Render each note as a NoteCard.
 //   3. Provide a Floating Action Button (FAB) for creating new notes.
 //   4. Handle Edit and Delete button presses from each NoteCard.
 //
-// The Edit button currently shows a SnackBar — the dedicated NoteEditScreen
-// will be wired up in the next step. Delete shows a confirmation dialog.
+// All visuals come from the theme — see lib/theme/.
 
 import 'package:flutter/material.dart';
 
 import '../models/note.dart';
 import '../services/firestore_service.dart';
+import '../theme/app_spacing.dart';
+import '../widgets/delete_confirmation_dialog.dart';
+import '../widgets/empty_state.dart';
 import '../widgets/note_card.dart';
+import '../widgets/responsive.dart';
 import 'note_edit_screen.dart';
 
 class NotesListScreen extends StatefulWidget {
@@ -26,10 +29,7 @@ class NotesListScreen extends StatefulWidget {
 }
 
 class _NotesListScreenState extends State<NotesListScreen> {
-  /// Tap handler for the "+" FAB.
-  ///
-  /// Navigates to NoteEditScreen in CREATE mode (no `note` argument).
-  /// StreamBuilder on the previous screen picks up the new note on pop.
+  /// FAB tap — navigate to NoteEditScreen in CREATE mode.
   void _onAddNotePressed() {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -38,10 +38,7 @@ class _NotesListScreenState extends State<NotesListScreen> {
     );
   }
 
-  /// Tap handler for the "Edit" button on a NoteCard.
-  ///
-  /// Navigates to NoteEditScreen in EDIT mode, passing the existing note
-  /// so the form is pre-filled with its title and description.
+  /// Edit tap on a card — navigate to NoteEditScreen in EDIT mode.
   void _onEditNote(Note note) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -50,51 +47,18 @@ class _NotesListScreenState extends State<NotesListScreen> {
     );
   }
 
-  /// Tap handler for the "Delete" button on a NoteCard.
-  ///
-  /// Shows a confirmation AlertDialog. If the user confirms, we call
-  /// FirestoreService.deleteNote() — the StreamBuilder automatically
-  /// removes the card from the list when Firestore emits the change.
+  /// Delete tap on a card — show confirmation dialog, then delete.
   Future<void> _onDeleteNote(Note note) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Delete note?'),
-          content: Text(
-            'Are you sure you want to delete "${note.title}"? '
-            'This cannot be undone.',
-          ),
-          actions: [
-            // Cancel — just closes the dialog with `false`.
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
-            ),
-            // Delete — closes the dialog with `true`, then the caller
-            // actually performs the Firestore delete.
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              style: TextButton.styleFrom(
-                foregroundColor: Theme.of(dialogContext).colorScheme.error,
-              ),
-              child: const Text('Delete'),
-            ),
-          ],
-        );
-      },
-    );
+    final confirmed = await showDeleteNoteDialog(context: context, note: note);
+    if (confirmed != true) return;
 
-    // If the user confirmed, perform the actual delete.
-    if (confirmed == true) {
-      try {
-        await FirestoreService.deleteNote(note.id);
-      } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete: $e')),
-        );
-      }
+    try {
+      await FirestoreService.deleteNote(note.id);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete: $e')),
+      );
     }
   }
 
@@ -103,62 +67,80 @@ class _NotesListScreenState extends State<NotesListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Amar Notes'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
 
-      // ── FAB: add a new note ──────────────────────────────────────
-      floatingActionButton: FloatingActionButton(
+      // Extended FAB shows icon + label for better discoverability.
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: _onAddNotePressed,
-        tooltip: 'Add note',
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: const Text('New note'),
       ),
 
-      // ── Body: real-time list of notes ────────────────────────────
       body: StreamBuilder<List<Note>>(
-        // Subscribe to the live stream of notes from Firestore.
         stream: FirestoreService.streamNotes(),
         builder: (context, snapshot) {
-          // 1) Waiting for the first event from Firestore.
+          // 1) Waiting for first event.
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // 2) Firestore returned an error (e.g. permissions, offline).
+          // 2) Error from Firestore.
           if (snapshot.hasError) {
             return Center(
               child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(
-                  'Error loading notes:\n${snapshot.error}',
-                  textAlign: TextAlign.center,
+                padding: const EdgeInsets.all(AppSpacing.xl),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.cloud_off,
+                      size: 64,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    Text(
+                      'Couldn\'t load notes',
+                      style: Theme.of(context).textTheme.titleLarge,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      '${snapshot.error}',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
               ),
             );
           }
 
-          // 3) No error but the user has no notes yet — empty state.
+          // 3) Empty state.
           final notes = snapshot.data ?? [];
           if (notes.isEmpty) {
-            return const Center(
-              child: Text(
-                'No notes yet.\nTap + to create your first note.',
-                textAlign: TextAlign.center,
-              ),
+            return const EmptyState(
+              icon: Icons.note_alt_outlined,
+              title: 'No notes yet',
+              message: 'Tap "New note" to capture your first thought.',
             );
           }
 
-          // 4) Happy path: render the list of cards.
-          return ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: notes.length,
-            itemBuilder: (context, index) {
-              final note = notes[index];
-              return NoteCard(
-                note: note,
-                onEdit: () => _onEditNote(note),
-                onDelete: () => _onDeleteNote(note),
-              );
-            },
+          // 4) Happy path: render the list.
+          // Cap the content width on tablets/desktop so cards don't stretch
+          // absurdly wide.
+          return AppSpacing.constrained(
+            ListView.builder(
+              padding: horizontalScreenPadding(context),
+              itemCount: notes.length,
+              itemBuilder: (context, index) {
+                final note = notes[index];
+                return NoteCard(
+                  note: note,
+                  onEdit: () => _onEditNote(note),
+                  onDelete: () => _onDeleteNote(note),
+                );
+              },
+            ),
           );
         },
       ),
